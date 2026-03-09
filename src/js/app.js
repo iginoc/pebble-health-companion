@@ -24,11 +24,3 @@ Pebble.addEventListener("ready", function() {
 Pebble.addEventListener("appmessage", function(e) {
    // App messages are handled by the native Android companion app.
 });
-
-Pebble.addEventListener("showConfiguration", function() {
-   // Configuration is handled by the native Android companion app.
-});
-
-Pebble.addEventListener("webviewclosed", function(e) {
-   // Configuration is handled by the native Android companion app.
-});

@@ -27,10 +27,6 @@
 #define MSG_KEY_UPLOAD_FAILED	150
 #define MSG_KEY_DATA_KEY	210
 #define MSG_KEY_DATA_LINE	220
-#define MSG_KEY_CFG_START	301
-#define MSG_KEY_CFG_END		302
-#define MSG_KEY_CFG_AUTO_CLOSE	310
-#define MSG_KEY_CFG_WAKEUP_TIME	320
 
 static Window *window;
 static TextLayer *modal_text_layer;
@@ -46,7 +42,6 @@ static char global_buffer[1024];
 static bool sending_data = false;
 static bool cfg_auto_close = false;
 static bool auto_close = false;
-static bool configuring = false;
 static int cfg_wakeup_time = -1;
 static int32_t last_key = 0;
 
@@ -59,7 +54,8 @@ static struct widget {
 	uint32_t	first_key;
 	uint32_t	current_key;
 	time_t		start_time;
-} phone, web;
+} phone;
+static uint32_t ack_key = 0;
 
 static void
 close_app(void) {
@@ -73,9 +69,6 @@ set_modal_mode(bool is_modal) {
 	layer_set_hidden(text_layer_get_layer(phone.label_layer), is_modal);
 	layer_set_hidden(text_layer_get_layer(phone.rate_layer), is_modal);
 	layer_set_hidden(phone.progress_layer, is_modal);
-	layer_set_hidden(text_layer_get_layer(web.label_layer), is_modal);
-	layer_set_hidden(text_layer_get_layer(web.rate_layer), is_modal);
-	layer_set_hidden(web.progress_layer, is_modal);
 	modal_displayed = is_modal;
 }
 
@@ -111,7 +104,6 @@ update_half_progress(struct widget *widget) {
 static void
 update_progress(void) {
 	update_half_progress(&phone);
-	update_half_progress(&web);
 	display_dirty = false;
 }
 
@@ -164,37 +156,6 @@ window_load(Window *window) {
 	    GColorLightGray);
 	layer_add_child(window_layer, phone.progress_layer);
 
-	web.progress_layer = progress_layer_create(GRect(bounds.size.w / 4,
-	    bounds.size.h / 2 + PROGRESS_MARGIN / 2,
-	    bounds.size.w / 2,
-	    PROGRESS_HEIGHT));
-	progress_layer_set_progress(web.progress_layer, 0);
-	progress_layer_set_corner_radius(web.progress_layer, 3);
-	progress_layer_set_foreground_color(web.progress_layer, GColorBlack);
-	progress_layer_set_background_color(web.progress_layer,
-	    GColorLightGray);
-	layer_add_child(window_layer, web.progress_layer);
-
-	web.label_layer = text_layer_create(GRect(0,
-	    bounds.size.h / 2 + LABEL_MARGIN,
-	    bounds.size.w,
-	    LABEL_HEIGHT));
-	text_layer_set_text(web.label_layer, web.label);
-	text_layer_set_text_alignment(web.label_layer, GTextAlignmentCenter);
-	text_layer_set_font(web.label_layer,
-	    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
-	layer_add_child(window_layer, text_layer_get_layer(web.label_layer));
-
-	web.rate_layer = text_layer_create(GRect(0,
-	    bounds.size.h / 2 + LABEL_MARGIN + LABEL_HEIGHT,
-	    bounds.size.w,
-	    LABEL_HEIGHT));
-	text_layer_set_text(web.rate_layer, web.rate);
-	text_layer_set_text_alignment(web.rate_layer, GTextAlignmentCenter);
-	text_layer_set_font(web.rate_layer,
-	    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
-	layer_add_child(window_layer, text_layer_get_layer(web.rate_layer));
-
 	set_modal_mode(true);
 }
 
@@ -202,9 +163,7 @@ static void
 window_unload(Window *window) {
 	text_layer_destroy(modal_text_layer);
 	text_layer_destroy(phone.label_layer);
-	text_layer_destroy(web.label_layer);
 	progress_layer_destroy(phone.progress_layer);
-	progress_layer_destroy(web.progress_layer);
 }
 
 static void
@@ -398,7 +357,7 @@ send_next_line(void) {
 		sending_data = false;
 		last_key = phone.current_key;
 		display_dirty = true;
-		if (auto_close && web.current_key >= phone.current_key)
+		if (auto_close && ack_key >= phone.current_key)
 			close_app();
 		return;
 	}
@@ -427,8 +386,7 @@ handle_last_sent(Tuple *tuple) {
 
 	phone.start_time = time(0);
 	phone.first_key = phone.current_key = 0;
-	web.start_time = 0;
-	web.first_key = web.current_key = 0;
+	ack_key = 0;
 	minute_index = 0;
 	minute_data_size = 0;
 	minute_last = ikey ? (ikey + 1) * 60 : 0;
@@ -460,53 +418,10 @@ handle_received_tuple(Tuple *tuple) {
 		break;
 
 	    case MSG_KEY_UPLOAD_DONE:
-		web.current_key = tuple_uint(tuple);
-		if (!web.first_key) web.first_key = web.current_key;
-		display_dirty = true;
+		ack_key = tuple_uint(tuple);
 		if (auto_close && !sending_data
-		    && web.current_key >= phone.current_key)
+		    && ack_key >= phone.current_key)
 			close_app();
-		break;
-
-	    case MSG_KEY_UPLOAD_START:
-		if (!web.first_key) {
-			web.first_key = tuple_uint(tuple);
-			web.start_time = time(0);
-		}
-		break;
-
-	    case MSG_KEY_UPLOAD_FAILED:
-		web.start_time = 0;
-		if (tuple->type == TUPLE_CSTRING)
-			snprintf(web.rate, sizeof web.rate,
-			    "%s", tuple->value->cstring);
-		break;
-
-	    case MSG_KEY_CFG_AUTO_CLOSE:
-		auto_close = cfg_auto_close = (tuple_uint(tuple) != 0);
-		persist_write_bool(MSG_KEY_CFG_AUTO_CLOSE, auto_close);
-		if (auto_close && !sending_data
-		    && web.current_key >= phone.current_key)
-			close_app();
-		break;
-
-	    case MSG_KEY_CFG_WAKEUP_TIME:
-		cfg_wakeup_time = tuple_int(tuple);
-		persist_write_int(MSG_KEY_CFG_WAKEUP_TIME, cfg_wakeup_time + 1);
-		APP_LOG(APP_LOG_LEVEL_INFO,
-		    "wrote cfg_wakeup_time %i", cfg_wakeup_time);
-		break;
-
-	    case MSG_KEY_CFG_START:
-		APP_LOG(APP_LOG_LEVEL_INFO, "Starting configuration");
-		auto_close = false;
-		configuring = true;
-		break;
-
-	    case MSG_KEY_CFG_END:
-		APP_LOG(APP_LOG_LEVEL_INFO, "End of configuration");
-		auto_close = cfg_auto_close;
-		configuring = false;
 		break;
 
 	    default:
@@ -551,10 +466,10 @@ tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 
 static void
 init(void) {
-	cfg_auto_close = persist_read_bool(MSG_KEY_CFG_AUTO_CLOSE);
-	cfg_wakeup_time = persist_read_int(MSG_KEY_CFG_WAKEUP_TIME) - 1;
-	APP_LOG(APP_LOG_LEVEL_INFO,
-	    "read cfg_wakeup_time %i", cfg_wakeup_time);
+	// Default values since config is removed
+	cfg_auto_close = false;
+	cfg_wakeup_time = -1;
+
 	auto_close = (cfg_auto_close || launch_reason() == APP_LAUNCH_WAKEUP);
 
 	app_message_register_inbox_received(inbox_received_handler);

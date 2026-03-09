@@ -7,7 +7,7 @@
   "sdkVersion": "3",
   "targetPlatforms": ["basalt", "chalk", "diorite"],
   "enableMultiJS": true,
-  "capabilities": [ "health", "configurable" ],
+  "capabilities": [ "health" ],
   "watchapp": {
     "watchface": false
   },
@@ -18,11 +18,7 @@
     "uploadStart": 140,
     "uploadFailed": 150,
     "dataKey": 210,
-    "dataLine": 220,
-    "cfgStart": 301,
-    "cfgEnd": 302,
-    "cfgAutoClose": 310,
-    "cfgWakeupTime": 320
+    "dataLine": 220
   },
   "resources": {
     "media": []
