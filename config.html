@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title></title>
+  <link rel="stylesheet" type="text/css" href="https://cdn.rawgit.com/pebble/slate/v0.0.3/dist/css/slate.min.css">
+  <style>
+  .title {
+    padding: 15px 10px;
+    text-transform: uppercase;
+    font-family: "PT Sans", sans-serif;
+    font-size: 1.2em;
+    font-weight: 500;
+    color: 0x888888;
+    text-align: center;
+  }
+
+  .item-draggable-list .delete-item {
+    right: 45px;
+  }
+  </style>
+  <script>
+  function getRawQueryParam(variable, defaultValue) {
+    var query = location.search.substring(1);
+    var vars = query.split("&");
+    for (var i = 0; i < vars.length; i++) {
+      var pair = vars[i].split("=");
+      if (pair[0] === variable) {
+        return pair[1];
+      }
+    }
+    return defaultValue;
+  }
+
+  function getQueryParam(variable, defaultValue) {
+    return decodeURIComponent(getRawQueryParam(variable, defaultValue));
+  }
+
+  function readAndEncodeList(elementId) {
+    var cn = document.getElementById(elementId).childNodes;
+    var result = [];
+    var i;
+    for (i = 0; i < cn.length; i++) {
+      if (cn[i].className === "item") {
+        result.push(encodeURIComponent(cn[i].childNodes[0].nodeValue));
+      }
+    }
+    return result;
+  }
+
+  function onSubmit() {
+    // Set the return URL depending on the runtime environment
+    var return_to = getQueryParam("return_to", "pebblejs://close#");
+    var sign_enabled = document.getElementById("signEnable").checked;
+    var options = {
+      "url": document.getElementById("url").value,
+      "dataField": document.getElementById("dataField").value,
+      "bundleMax": document.getElementById("bundleMaxSize").value,
+      "bundleSeparator": document.getElementById("bundleSeparator").value,
+      "signAlgorithm": document.getElementById("signAlgorithm").value,
+      "signFieldFormat": document.getElementById("signFieldFormat").value,
+      "signFieldName": document.getElementById("signFieldName").value,
+      "signKey": document.getElementById("signKey").value,
+      "signKeyFormat": document.getElementById("signKeyFormat").value,
+      "autoClose" : document.getElementById("autoClose").checked ? 1 : 0,
+      "wakeupTime" : document.getElementById("wakeupEnable").checked
+       ? document.getElementById("wakeupTime").value : "-1",
+      "extraFields" : readAndEncodeList("extraFields").join(","),
+    }
+
+    if (!document.getElementById("bundleEnable").checked) {
+       options.bundleMax = "1";
+    }
+
+    if (document.getElementById("resendEverything").checked) {
+       options.resend = true;
+    }
+
+    console.log("returning " + JSON.stringify(options));
+    document.location = return_to + encodeURIComponent(JSON.stringify(options));
+  }
+
+  function updateBundleVisibility() {
+    document.getElementById("bundleFields").style.display
+     = document.getElementById("bundleEnable").checked
+     ? "block" : "none";
+  }
+
+  function updateSignVisibility() {
+    document.getElementById("signFields").style.display
+     = document.getElementById("signEnable").checked
+     ? "block" : "none";
+  }
+
+  function updateWakeupVisibility() {
+    document.getElementById("wakeupFields").style.display
+     = document.getElementById("wakeupEnable").checked
+     ? "block" : "none";
+  }
+  </script>
+</head>
+<body>
+  <div class="item-container">
+    <h1 class="title">Health Export</h1>
+  </div>
+
+  <div class="item-container">
+    <div class="item-container-header">Endpoint URL</div>
+    <div class="item-container-content">
+      <label class="item">
+        <input type="text" class="item-input" name="url" id="url" placeholder="http://example.com/post/path">
+      </label>
+      <label class="item">
+        Restart sending everthing
+        <input type="checkbox" class="item-toggle" name="resendEverything" id="resendEverything">
+      </label>
+    </div>
+  </div>
+
+  <div class="item-container">
+    <div class="item-container-header">Data Field Name</div>
+    <div class="item-container-content">
+      <label class="item">
+        <input type="text" class="item-input" name="dataField" id="dataField">
+      </label>
+    </div>
+  </div>
+
+  <div class="item-container">
+    <div class="item-container-header">Auto Wakeup</div>
+    <div class="item-container-content">
+      <label class="item">
+        Enable Auto Wakeup
+        <input type="checkbox" class="item-toggle" name="wakeupEnable" id="wakeupEnable" onchange="updateWakeupVisibility();">
+      </label>
+      <div id="wakeupFields">
+        <label class="item">
+          Wake-up time
+          <input type="time" class="item-time" name="wakeupTime" id="wakeupTime" value="00:00">
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="item-container">
+    <div class="item-container-header">Data Bundling</div>
+    <div class="item-container-content">
+      <label class="item">
+        Enable Data Bundling
+        <input type="checkbox" class="item-toggle" name="bundleEnable" id="bundleEnable" onchange="updateBundleVisibility();">
+      </label>
+      <div id=bundleFields>
+        <label class="item">
+          Max Bundle Size
+          <div class="item-input-wrapper item-slider-text">
+            <input type="text" class="item-input" name="bundleMaxSize" id="bundleMaxSize" value="1">
+          </div>
+        </label>
+        <label class="item">
+          Line Separator
+          <div class="item-input-wrapper">
+            <input type="text" class="item-input" name="bundleSeparator" id="bundleSeparator" placeholder="%0d%0a">
+          </div>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="item-container">
+    <div class="item-container-header">Data Signature</div>
+    <div class="item-container-content">
+      <label class="item">
+        Enable
+        <input type="checkbox" class="item-toggle" name="signEnable" id="signEnable" onchange="updateSignVisibility();">
+      </label>
+      <div id=signFields>
+        <label class="item">
+          Algorithm
+          <select id="signAlgorithm" class="item-select">
+            <option class="item-select-option">SHA-1</option>
+            <option class="item-select-option">SHA-224</option>
+            <option class="item-select-option">SHA-256</option>
+            <option class="item-select-option">SHA-384</option>
+            <option class="item-select-option">SHA-512</option>
+          </select>
+        </label>
+        <label class="item">
+          Field Format
+          <select id="signFieldFormat" class="item-select">
+            <option class="item-select-option" value="HEX">Hex</option>
+            <option class="item-select-option" value="B64">Base-64</option>
+            <option class="item-select-option" value="TEXT">Text</option>
+            <option class="item-select-option" value="BYTES">Bytes</option>
+          </select>
+        </label>
+        <label class="item">
+          Signature Field Name
+          <div class="item-input-wrapper">
+            <input type="text" class="item-input" name="signFieldName" id="signFieldName" value="">
+          </div>
+        </label>
+        <label class="item">
+          Private Key
+          <div class="item-input-wrapper">
+            <input type="text" class="item-input" name="signKey" id="signKey">
+          </div>
+        </label>
+        <label class="item">
+          Private Key Format
+          <select id="signKeyFormat" class="item-select">
+            <option class="item-select-option" value="HEX">Hex</option>
+            <option class="item-select-option" value="B64">Base-64</option>
+            <option class="item-select-option" value="TEXT">Text</option>
+            <option class="item-select-option" value="BYTES">Bytes</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="item-container">
+    <div class="item-container-header">Auto-close</div>
+    <div class="item-container-content">
+      <label class="item">
+        Auto-close on success
+        <input type="checkbox" class="item-toggle" name="autoClose" id="autoClose">
+      </label>
+    </div>
+  </div>
+
+  <div class="item-container">
+    <div class="item-container-header">Extra Form Fields</div>
+    <div class="item-container-content">
+      <div class="item-dynamic-list" id="extraFields">
+      </div>
+    </div>
+    <div class="item-container-footer">
+      Extra fields are sent with constant values along with the sent data.
+      It can be used to provide e.g. an authentication token, or an
+      identification field. Items in the list above must be of the form
+      "name=value" (without quotes), and then part before the equal sign is
+      field name and the part after is its value. Entries without equal sign
+      are considered as a whole field name with empty value.
+    </div>
+  </div>
+
+  <div class="item-container">
+    <div class="button-container">
+      <input id="submitButton" type="button" class="item-button" value="SUBMIT" onClick="onSubmit()">
+    </div>
+  </div>
+
+  <script src="https://cdn.rawgit.com/pebble/slate/v0.0.3/dist/js/slate.min.js"></script>
+  <script>
+    const versionTag = getQueryParam("v");
+    if (versionTag) {
+      document.getElementsByTagName("h1")[0].childNodes[0].nodeValue = "Health Export " + versionTag;
+    }
+
+    var initBundleSize = parseInt(getQueryParam("bundle_max", "1"), 10);
+    if (!(initBundleSize >= 1)) initBundleSize = 1;
+
+    document.getElementById("url").value = getQueryParam("url", "");
+    document.getElementById("dataField").value = getQueryParam("data_field", "");
+    document.getElementById("bundleEnable").checked = (initBundleSize > 1);
+    document.getElementById("bundleMaxSize").value = initBundleSize;
+    document.getElementById("bundleSeparator").value = encodeURIComponent(getQueryParam("bundle_sep", ""));
+    document.getElementById("signAlgorithm").value = getQueryParam("s_algo", "SHA-1");
+    document.getElementById("signFieldFormat").value = getQueryParam("s_fieldf", "HEX");
+    document.getElementById("signFieldName").value = getQueryParam("s_field", "");
+    document.getElementById("signKey").value = getQueryParam("s_key", "");
+    document.getElementById("signKeyFormat").value = getQueryParam("s_keyf", "HEX");
+    document.getElementById("signEnable").checked = (getQueryParam("s_field", "") !== "");
+    document.getElementById("autoClose").checked = (getQueryParam("ac", "") !== "");
+
+    var initWakeupTime = parseInt(getQueryParam("wakeup", "-1"));
+    if (initWakeupTime >= 0) {
+      var wakeupMin = initWakeupTime % 60;
+      document.getElementById("wakeupEnable").checked = true;
+      document.getElementById("wakeupTime").value = (initWakeupTime / 60 | 0).toString(10) + (wakeupMin >= 10 ? ":" : ":0") + wakeupMin.toString(10);
+    } else {
+      document.getElementById("wakeupEnable").checked = false;
+    }
+
+    updateBundleVisibility();
+    updateSignVisibility();
+    updateWakeupVisibility();
+
+    var initExtraFields = ("," + getRawQueryParam("extra", "")).split(",");
+    initExtraFields.shift();
+    for (var i = 0; i < initExtraFields.length; i++) {
+      var newNode = document.createElement("label");
+      newNode.className = "item";
+      newNode.appendChild(document.createTextNode(decodeURIComponent(initExtraFields[i])));
+      document.getElementById("extraFields").appendChild(newNode);
+    }
+  </script>
+</body>
+</html>

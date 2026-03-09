@@ -1,0 +1,30 @@
+{
+  "uuid": "359b47c2-1ba9-11f1-b599-24b6fdfdf126",
+  "shortName": "Pebble Health Companion",
+  "longName": "Pebble Health Companion",
+  "companyName": "iginoc",
+  "versionLabel": "1.2",
+  "sdkVersion": "3",
+  "targetPlatforms": ["basalt", "chalk", "diorite"],
+  "enableMultiJS": true,
+  "capabilities": [ "health", "configurable" ],
+  "watchapp": {
+    "watchface": false
+  },
+  "appKeys": {
+    "lastSent": 110,
+    "modalMessage": 120,
+    "uploadDone": 130,
+    "uploadStart": 140,
+    "uploadFailed": 150,
+    "dataKey": 210,
+    "dataLine": 220,
+    "cfgStart": 301,
+    "cfgEnd": 302,
+    "cfgAutoClose": 310,
+    "cfgWakeupTime": 320
+  },
+  "resources": {
+    "media": []
+  }
+}
