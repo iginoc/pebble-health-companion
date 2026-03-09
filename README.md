@@ -16,11 +16,11 @@ The `src/js/app.js` file is merely a stub to allow the watchapp to function with
 
 ## How it Works
 
-1.  When you start the app on your watch, it requests the timestamp of the last successfully sent data point from the companion app.
-2.  The watchapp begins reading all health data from the watch's internal storage, starting from where it left off.
-3.  For each minute of data, it sends a message to the phone containing a CSV string.
-4.  The watchapp displays the progress of the export.
-5.  The watchapp now stores the timestamp of the last acknowledged data point in its own persistent storage. This makes the sync process more resilient, as it can resume correctly even if the companion app "forgets" the last sync point.
+1.  **Handshake & Filtering**: When the app starts, it waits for the Android companion app to send the `lastSent` timestamp (Key `110`). This value represents the time of the last data point successfully stored by the Android app.
+2.  **Incremental Sync**: The watchapp uses this timestamp to filter the health data stored on the watch. It skips any records older than or equal to the `lastSent` time, ensuring that only **new** data is exported.
+3.  **Transmission**: For each minute of new data, the watchapp sends a message to the phone containing a CSV string.
+4.  **Progress**: The watchapp displays the progress of the export on the screen.
+5.  **Resilience**: The watchapp also maintains its own local record of the last sent time. This double-check ensures that if the Android app is reinstalled or loses its state, the watch can still resume from where it thinks it left off.
 
 ## Data Format
 
