@@ -1,4 +1,4 @@
-/*
+/* A fork of the original PebbleHealthExport by Natacha Porté, with the following changes:
  * Copyright (c) 2016, Natacha Porté
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -27,6 +27,7 @@
 #define MSG_KEY_UPLOAD_FAILED	150
 #define MSG_KEY_DATA_KEY	210
 #define MSG_KEY_DATA_LINE	220
+#define PERSIST_KEY_LAST_SENT_LOCAL 10000
 
 static Window *window;
 static TextLayer *modal_text_layer;
@@ -341,8 +342,8 @@ load_minute_data_page(time_t start) {
 	}
 
 	if (!minute_data_size) {
-		APP_LOG(APP_LOG_LEVEL_ERROR,
-		    "health_service_get_minute_history returned 0");
+		APP_LOG(APP_LOG_LEVEL_INFO,
+		    "Sync complete or no data (history returned 0)");
 		minute_first = minute_last = 0;
 		return false;
 	}
@@ -370,19 +371,13 @@ send_next_line(void) {
 
 static void
 handle_last_sent(Tuple *tuple) {
-	uint32_t ikey = 0;
-	if (tuple->length == 4 && tuple->type == TUPLE_UINT)
-		ikey = tuple->value->uint32;
-	else if (tuple->length == 4 && tuple->type == TUPLE_INT)
-		ikey = tuple->value->int32;
-	else {
-		APP_LOG(APP_LOG_LEVEL_ERROR,
-		    "Unexpected type %d or length %" PRIu16
-		    " for MSG_KEY_LAST_SENT",
-		    (int)tuple->type, tuple->length);
-		return;
-	}
+	uint32_t ikey = tuple_uint(tuple);
 	APP_LOG(APP_LOG_LEVEL_INFO, "received LAST_SENT %" PRIu32, ikey);
+
+	if (ikey == 0 && persist_exists(PERSIST_KEY_LAST_SENT_LOCAL)) {
+		ikey = (uint32_t)persist_read_int(PERSIST_KEY_LAST_SENT_LOCAL);
+		APP_LOG(APP_LOG_LEVEL_INFO, "Using local LAST_SENT %" PRIu32, ikey);
+	}
 
 	phone.start_time = time(0);
 	phone.first_key = phone.current_key = 0;
@@ -419,6 +414,7 @@ handle_received_tuple(Tuple *tuple) {
 
 	    case MSG_KEY_UPLOAD_DONE:
 		ack_key = tuple_uint(tuple);
+		persist_write_int(PERSIST_KEY_LAST_SENT_LOCAL, (int32_t)ack_key);
 		if (auto_close && !sending_data
 		    && ack_key >= phone.current_key)
 			close_app();

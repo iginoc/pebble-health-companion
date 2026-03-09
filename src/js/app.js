@@ -23,4 +23,6 @@ Pebble.addEventListener("ready", function() {
 
 Pebble.addEventListener("appmessage", function(e) {
    // App messages are handled by the native Android companion app.
+   // Log the received message to verify connectivity
+   console.log('AppMessage received: ' + JSON.stringify(e.payload));
 });
